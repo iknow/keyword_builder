@@ -2,6 +2,8 @@
 
 # Abstract builder interface for types with keyword argument constructors.
 class KeywordBuilder
+  class BuilderError < ArgumentError; end
+
   class << self
     def create(clazz, constructor: :new)
       keywords, wildcard = parse_constructor_parameters(clazz, constructor)
@@ -65,7 +67,7 @@ class KeywordBuilder
 
   def _set_attribute(attr, *args, &block)
     if attrs.has_key?(attr)
-      raise RuntimeError.new("Invalid builder state: #{attr} already provided")
+      raise BuilderError.new("Invalid builder state: #{attr} already provided")
     end
 
     value =
