@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require 'set'
 
 # Abstract builder interface for types with keyword argument constructors.
 class KeywordBuilder
