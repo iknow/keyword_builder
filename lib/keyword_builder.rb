@@ -15,7 +15,7 @@ class KeywordBuilder
         define_singleton_method(:keywords) { keywords }
         define_singleton_method(:wildcard?) { wildcard }
         keywords.each do |keyword|
-          define_method(keyword) { |*args, &block| _set_attribute(keyword, *args, &block) }
+          define_method(keyword) { |*args, **kwargs, &block| _set_attribute(keyword, *args, **kwargs, &block) }
         end
       end
     end
@@ -66,28 +66,35 @@ class KeywordBuilder
     @attrs = initial_attrs.dup
   end
 
-  def _set_attribute(attr, *args, &block)
+  def _set_attribute(attr, *args, **kwargs, &block)
     if attrs.has_key?(attr)
       raise BuilderError.new("Invalid builder state: #{attr} already provided")
     end
 
-    value =
-      if block_given?
-        raise ArgumentError.new('Cannot provide both immediate and block value') unless args.blank?
+    if kwargs.empty?
+      value = args.dup
 
-        block
-      elsif args.size == 1
-        args[0]
-      else
-        raise ArgumentError.new('Wrong number of arguments: expected 1 or block')
+      value << block if block_given?
+
+      if value.empty?
+        raise ArgumentError.new('Wrong number of arguments: expected at least one argument or block')
       end
+
+      value = value[0] if value.size == 1
+    else
+      unless args.empty? && block.nil?
+        raise ArgumentError.new('Invalid arguments: cannot provide both keyword and positional arguments')
+      end
+
+      value = kwargs.dup
+    end
 
     attrs[attr] = value
   end
 
-  def method_missing(attr, *args, &block)
+  def method_missing(attr, *args, **kwargs, &block)
     if self.class.wildcard?
-      _set_attribute(attr, *args, &block)
+      _set_attribute(attr, *args, **kwargs, &block)
     else
       super
     end
