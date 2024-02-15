@@ -34,6 +34,32 @@ RSpec.describe 'KeywordBuilder' do
       expect(result).to have_attributes(a: 1, b: 2, c: 3)
     end
 
+    it 'constructs an array when builder is given more than one argument' do
+      result = builder.build!(a: 1, b: 2) do
+        c(1, 2, 3)
+      end
+
+      expect(result).to have_attributes(a: 1, b: 2, c: [1, 2, 3])
+    end
+
+    it 'constructs an array when builder is given arguments and a block' do
+      p = proc { 1 }
+
+      result = builder.build!(a: 1, b: 2) do
+        c(3, &p)
+      end
+
+      expect(result).to have_attributes(a: 1, b: 2, c: [3, p])
+    end
+
+    it 'constructs an hash when builder is given keyword arguments' do
+      result = builder.build!(a: 1, b: 2) do
+        c(x: 3, y: 4)
+      end
+
+      expect(result).to have_attributes(a: 1, b: 2, c: { x: 3, y: 4 })
+    end
+
     it 'rejects arguments colliding with builder' do
       expect {
         builder.build!(a: 1, b: 2, c: 3) { a 1 }
@@ -55,10 +81,16 @@ RSpec.describe 'KeywordBuilder' do
       }.to raise_error(ArgumentError, /Wrong number of arguments/)
     end
 
-    it 'requires only one argument' do
+    it 'rejects mixed keyword and positional arguments' do
       expect {
-        builder.build!(a: 1, b: 2) { c(1, 2, 3) }
-      }.to raise_error(ArgumentError, /Wrong number of arguments/)
+        builder.build!(a: 1, b: 2) { c(3, x: 4) }
+      }.to raise_error(ArgumentError, /Invalid arguments/)
+    end
+
+    it 'rejects mixed keyword and block arguments' do
+      expect {
+        builder.build!(a: 1, b: 2) { c(x: 3) { 4 } }
+      }.to raise_error(ArgumentError, /Invalid arguments/)
     end
 
     it 'rejects unknown arguments' do
@@ -69,6 +101,19 @@ RSpec.describe 'KeywordBuilder' do
 
     it 'marks non-wildcard builders' do
       expect(builder).not_to be_wildcard
+    end
+
+    context 'with finalizer' do
+      let(:builder) do
+        KeywordBuilder.create(Record) do |attrs|
+          attrs[:a] += 1
+        end
+      end
+
+      it 'invokes the finalizer on the builder' do
+        result = builder.build!(a: 1, b: 2, c: 3)
+        expect(result).to have_attributes(a: 2, b: 2, c: 3)
+      end
     end
 
     context 'with wildcard arguments' do
