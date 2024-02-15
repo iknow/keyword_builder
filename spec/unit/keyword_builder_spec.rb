@@ -103,6 +103,19 @@ RSpec.describe 'KeywordBuilder' do
       expect(builder).not_to be_wildcard
     end
 
+    context 'with finalizer' do
+      let(:builder) do
+        KeywordBuilder.create(Record) do |attrs|
+          attrs[:a] += 1
+        end
+      end
+
+      it 'invokes the finalizer on the builder' do
+        result = builder.build!(a: 1, b: 2, c: 3)
+        expect(result).to have_attributes(a: 2, b: 2, c: 3)
+      end
+    end
+
     context 'with wildcard arguments' do
       WildcardRecord = Struct.new(:a, :b) do
         def initialize(**rest)

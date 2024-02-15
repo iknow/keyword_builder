@@ -6,7 +6,7 @@ class KeywordBuilder
   class BuilderError < ArgumentError; end
 
   class << self
-    def create(clazz, constructor: :new)
+    def create(clazz, constructor: :new, &finalizer)
       keywords, wildcard = parse_constructor_parameters(clazz, constructor)
 
       Class.new(self) do
@@ -14,6 +14,10 @@ class KeywordBuilder
         define_singleton_method(:constructor) { constructor }
         define_singleton_method(:keywords) { keywords }
         define_singleton_method(:wildcard?) { wildcard }
+
+        finalizer ||= proc { |_attrs| }
+        define_singleton_method(:finalizer, &finalizer)
+
         keywords.each do |keyword|
           define_method(keyword) { |*args, **kwargs, &block| _set_attribute(keyword, *args, **kwargs, &block) }
         end
@@ -27,6 +31,7 @@ class KeywordBuilder
     def build!(**initial_attrs, &block)
       builder = self.new(initial_attrs)
       builder.instance_eval(&block) if block_given?
+      finalizer(builder.attrs)
       clazz.public_send(constructor, **builder.attrs)
     end
 
